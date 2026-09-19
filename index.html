@@ -141,6 +141,9 @@
                 <button type="submit" class="w-full bg-[#1d1d1f] hover:bg-[#313135] active:scale-[0.98] text-white py-4 rounded-2xl font-semibold text-sm transition-all duration-200">
                     Сохранить пароль
                 </button>
+                <button type="button" id="recovery-cancel-btn" class="w-full text-sm font-medium text-[#86868b] hover:text-[#1d1d1f]">
+                    Отмена
+                </button>
             </form>
         </div>
     </div>
@@ -455,6 +458,29 @@
             return interval === 'weekly' ? addDaysStr(fromDateStr, 7) : addMonthsStr(fromDateStr, 1);
         }
 
+        // Небольшой некриптографический хэш (cyrb53-подобный) — нужен только для того,
+        // чтобы детерминированно превратить строку в 32 hex-символа, без внешних библиотек.
+        function hashHex32(str) {
+            let h1 = 0xdeadbeef ^ str.length, h2 = 0x41c6ce57 ^ str.length;
+            for (let i = 0; i < str.length; i++) {
+                const ch = str.charCodeAt(i);
+                h1 = Math.imul(h1 ^ ch, 2654435761);
+                h2 = Math.imul(h2 ^ ch, 1597334677);
+            }
+            h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+            h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+            return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+        }
+
+        // Детерминированный id для конкретного списания по подписке (шаблон + дата).
+        // Если два устройства независимо друг от друга сгенерируют одно и то же списание
+        // (например, оба вышли в сеть одновременно), они получат один и тот же id, и
+        // upsert по первичному ключу схлопнет их в одну запись вместо дубликата.
+        function recurringOccurrenceId(recurringId, dateStr) {
+            const hex = hashHex32(`${recurringId}:${dateStr}:a`) + hashHex32(`${recurringId}:${dateStr}:b`);
+            return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+        }
+
         // Создаёт метку времени на выбранный день (с текущим временем суток) —
         // так можно задним числом добавить трату за прошлый день из истории
         function timestampForSelectedDate() {
@@ -604,10 +630,11 @@
                 if (!t.is_active) return;
                 let guard = 0;
                 while (t.next_due <= today && guard < 24) {
-                    const occurred = expenses.some(e => e.recurring_id === t.id && dateStrOf(e.created_at) === t.next_due);
+                    const occId = recurringOccurrenceId(t.id, t.next_due);
+                    const occurred = expenses.some(e => e.id === occId || (e.recurring_id === t.id && dateStrOf(e.created_at) === t.next_due));
                     if (!occurred) {
                         expenses.unshift({
-                            id: crypto.randomUUID(),
+                            id: occId,
                             user_id: session.user.id,
                             name: t.name,
                             amount: t.amount,
@@ -1332,6 +1359,14 @@
         // ==========================================================================
         // Авторизация: вход, регистрация, восстановление пароля
         // ==========================================================================
+        // Флаг незавершённого сброса пароля: ссылка восстановления сама по себе даёт
+        // валидную сессию, поэтому если её открыли и бросили на середине (закрыли вкладку,
+        // не задав новый пароль), при следующем открытии сайта нельзя молча пускать
+        // в приложение по этой сессии — иначе ссылка восстановления работает как вечный логин.
+        function markRecoveryPending() { localStorage.setItem('pending_recovery', 'true'); }
+        function clearRecoveryPending() { localStorage.removeItem('pending_recovery'); }
+        function isRecoveryPending() { return localStorage.getItem('pending_recovery') === 'true'; }
+
         function authRedirectUrl() {
             return window.location.href.split('#')[0].split('?')[0];
         }
@@ -1419,8 +1454,16 @@
             } else {
                 el.className = 'text-sm rounded-xl px-4 py-3 mb-4 bg-[#e8f8ee] text-[#1e7e34]';
                 el.textContent = 'Пароль обновлён!';
+                clearRecoveryPending();
                 setTimeout(() => enterApp(session), 1000);
             }
+        });
+
+        // Если передумали сбрасывать пароль — выходим из временной сессии восстановления,
+        // а не оставляем её висеть в localStorage до следующего открытия сайта
+        document.getElementById('recovery-cancel-btn').addEventListener('click', async () => {
+            clearRecoveryPending();
+            await supabaseClient.auth.signOut();
         });
 
         // ==========================================================================
@@ -1465,6 +1508,7 @@
         supabaseClient.auth.onAuthStateChange((event, newSession) => {
             if (event === 'PASSWORD_RECOVERY') {
                 session = newSession;
+                markRecoveryPending();
                 showOnly(viewRecovery);
                 return;
             }
@@ -1473,6 +1517,15 @@
                 return;
             }
             if (newSession) {
+                if (isRecoveryPending()) {
+                    // Сессия осталась от ссылки восстановления, которую открыли, но не
+                    // довели до конца в прошлый раз — не пускаем в приложение молча.
+                    clearRecoveryPending();
+                    supabaseClient.auth.signOut();
+                    showOnly(viewAuth);
+                    setAuthTab('login');
+                    return;
+                }
                 enterApp(newSession);
             } else if (event === 'INITIAL_SESSION') {
                 showOnly(viewAuth);
