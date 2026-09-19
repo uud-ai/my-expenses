@@ -636,10 +636,13 @@
 
         async function fullSync() {
             if (!session || !navigator.onLine) { setSyncStatus(navigator.onLine ? 'pending' : 'offline'); return; }
-            await pushChanges();
-            await pullChanges();
+            // Сначала повторяющиеся шаблоны, потом расходы: у expenses.recurring_id есть
+            // внешний ключ на recurring_expenses, иначе апсерт расхода может упасть с FK-ошибкой,
+            // если шаблон ещё не долетел до сервера.
             await pushRecurringChanges();
             await pullRecurringChanges();
+            await pushChanges();
+            await pullChanges();
             processRecurring();
             renderUI();
             setSyncStatus(expenses.some(e => e._dirty) ? 'pending' : 'synced');
@@ -889,7 +892,7 @@
             pushChanges().then(() => setSyncStatus(expenses.some(e => e._dirty) ? 'pending' : 'synced'));
         }
 
-        function createRecurringExpense(name, amount, category, interval) {
+        async function createRecurringExpense(name, amount, category, interval) {
             const today = todayStr();
             const template = {
                 id: crypto.randomUUID(),
@@ -906,7 +909,9 @@
             };
             recurringTemplates.unshift(template);
             saveRecurringLocal();
-            pushRecurringChanges();
+            // Дожидаемся, пока шаблон подписки долетит до сервера, прежде чем создавать
+            // расход с recurring_id на него — иначе вставка расхода может упасть с FK-ошибкой.
+            await pushRecurringChanges();
             addExpense(name, amount, category, template.id);
         }
 
@@ -1441,6 +1446,13 @@
 
         function leaveApp() {
             unsubscribeRealtime();
+            // Стираем офлайн-кэш этого пользователя, чтобы после выхода на общем/чужом
+            // устройстве история трат не оставалась читаемой через localStorage.
+            if (session) {
+                localStorage.removeItem(expensesKey());
+                localStorage.removeItem(recurringKey());
+                localStorage.removeItem(lastSyncKey());
+            }
             session = null;
             expenses = [];
             recurringTemplates = [];
