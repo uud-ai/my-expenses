@@ -224,7 +224,7 @@
                 <!-- Индикатор перетаскивания (Home Indicator Look) -->
                 <div class="w-12 h-1.5 bg-[#e8e8ed] rounded-full mx-auto mb-6"></div>
 
-                <h3 class="text-2xl font-bold tracking-tight mb-6">Новый расход</h3>
+                <h3 id="modal-title" class="text-2xl font-bold tracking-tight mb-6">Новый расход</h3>
 
                 <!-- Форма -->
                 <form id="expense-form" class="space-y-4">
@@ -250,6 +250,24 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Подтверждение удаления -->
+        <div id="confirm-modal" class="fixed inset-0 z-50 invisible transition-all duration-300">
+            <div id="confirm-modal-overlay" class="absolute inset-0 bg-black/20 backdrop-blur-md opacity-0 transition-opacity duration-300"></div>
+            <div id="confirm-modal-sheet" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] p-6 max-w-md mx-auto transform translate-y-full transition-transform duration-300 shadow-[0_-10px_40px_rgba(0,0,0,0.06)]">
+                <div class="w-12 h-1.5 bg-[#e8e8ed] rounded-full mx-auto mb-6"></div>
+                <h3 class="text-2xl font-bold tracking-tight mb-2">Удалить расход?</h3>
+                <p id="confirm-text" class="text-sm text-[#86868b] mb-6"></p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" id="confirm-cancel-btn" class="bg-[#f5f5f7] hover:bg-[#e8e8ed] active:scale-[0.98] text-[#1d1d1f] py-4 rounded-2xl font-semibold text-sm transition-all duration-200">
+                        Отмена
+                    </button>
+                    <button type="button" id="confirm-delete-btn" class="bg-[#ff453a] hover:bg-[#ff6961] active:scale-[0.98] text-white py-4 rounded-2xl font-semibold text-sm transition-all duration-200">
+                        Удалить
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -432,7 +450,10 @@
                         </div>
                         <div class="flex items-center gap-4">
                             <span class="font-bold text-base text-[#1d1d1f]">${parseFloat(item.amount).toLocaleString('ru-RU')} ₽</span>
-                            <button onclick="deleteExpense('${item.id}')" class="text-[#86868b] hover:text-[#ff453a] active:scale-95 transition-all p-1">
+                            <button onclick="openEditModal('${item.id}')" class="text-[#86868b] hover:text-[#0071e3] active:scale-95 transition-all p-1">
+                                <i class="fa-regular fa-pen-to-square text-sm"></i>
+                            </button>
+                            <button onclick="confirmDelete('${item.id}')" class="text-[#86868b] hover:text-[#ff453a] active:scale-95 transition-all p-1">
                                 <i class="fa-regular fa-trash-can text-sm"></i>
                             </button>
                         </div>
@@ -462,6 +483,19 @@
             pushChanges().then(() => setSyncStatus(expenses.some(e => e._dirty) ? 'pending' : 'synced'));
         }
 
+        function updateExpense(id, name, amount) {
+            const item = expenses.find(e => e.id === id);
+            if (!item) return;
+            item.name = name;
+            item.amount = amount;
+            item.updated_at = new Date().toISOString();
+            item._dirty = true;
+            saveLocal();
+            renderUI();
+            setSyncStatus('pending');
+            pushChanges().then(() => setSyncStatus(expenses.some(e => e._dirty) ? 'pending' : 'synced'));
+        }
+
         function deleteExpense(id) {
             const item = expenses.find(e => e.id === id);
             if (!item) return;
@@ -480,13 +514,16 @@
         const modal = document.getElementById('modal');
         const modalOverlay = document.getElementById('modal-overlay');
         const modalSheet = document.getElementById('modal-sheet');
+        const modalTitle = document.getElementById('modal-title');
         const openModalBtn = document.getElementById('open-modal-btn');
         const closeModalBtn = document.getElementById('close-modal-btn');
         const expenseForm = document.getElementById('expense-form');
         const expenseNameInput = document.getElementById('expense-name');
         const expenseAmountInput = document.getElementById('expense-amount');
 
-        function openModal() {
+        let editingId = null;
+
+        function showModal() {
             modal.classList.remove('invisible');
             modalOverlay.classList.remove('opacity-0');
             modalOverlay.classList.add('opacity-100');
@@ -494,11 +531,29 @@
             setTimeout(() => expenseNameInput.focus(), 150);
         }
 
+        function openAddModal() {
+            editingId = null;
+            modalTitle.textContent = 'Новый расход';
+            expenseForm.reset();
+            showModal();
+        }
+
+        function openEditModal(id) {
+            const item = expenses.find(e => e.id === id);
+            if (!item) return;
+            editingId = id;
+            modalTitle.textContent = 'Изменить расход';
+            expenseNameInput.value = item.name;
+            expenseAmountInput.value = item.amount;
+            showModal();
+        }
+
         function closeModal() {
             modalOverlay.classList.remove('opacity-100');
             modalOverlay.classList.add('opacity-0');
             modalSheet.classList.add('translate-y-full');
             setTimeout(() => modal.classList.add('invisible'), 300);
+            editingId = null;
         }
 
         expenseForm.addEventListener('submit', (e) => {
@@ -506,15 +561,56 @@
             const name = expenseNameInput.value.trim();
             const amount = parseFloat(expenseAmountInput.value);
             if (name && amount > 0) {
-                addExpense(name, amount);
+                if (editingId) {
+                    updateExpense(editingId, name, amount);
+                } else {
+                    addExpense(name, amount);
+                }
                 closeModal();
                 expenseForm.reset();
             }
         });
 
-        openModalBtn.addEventListener('click', openModal);
+        openModalBtn.addEventListener('click', openAddModal);
         closeModalBtn.addEventListener('click', closeModal);
         modalOverlay.addEventListener('click', closeModal);
+
+        // ==========================================================================
+        // Подтверждение удаления
+        // ==========================================================================
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmModalOverlay = document.getElementById('confirm-modal-overlay');
+        const confirmModalSheet = document.getElementById('confirm-modal-sheet');
+        const confirmText = document.getElementById('confirm-text');
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        let pendingDeleteId = null;
+
+        function confirmDelete(id) {
+            const item = expenses.find(e => e.id === id);
+            if (!item) return;
+            pendingDeleteId = id;
+            confirmText.textContent = `«${item.name}», ${parseFloat(item.amount).toLocaleString('ru-RU')} ₽`;
+            confirmModal.classList.remove('invisible');
+            confirmModalOverlay.classList.remove('opacity-0');
+            confirmModalOverlay.classList.add('opacity-100');
+            confirmModalSheet.classList.remove('translate-y-full');
+        }
+
+        function closeConfirmModal() {
+            confirmModalOverlay.classList.remove('opacity-100');
+            confirmModalOverlay.classList.add('opacity-0');
+            confirmModalSheet.classList.add('translate-y-full');
+            setTimeout(() => confirmModal.classList.add('invisible'), 300);
+            pendingDeleteId = null;
+        }
+
+        confirmCancelBtn.addEventListener('click', closeConfirmModal);
+        confirmModalOverlay.addEventListener('click', closeConfirmModal);
+        confirmDeleteBtn.addEventListener('click', () => {
+            if (pendingDeleteId) deleteExpense(pendingDeleteId);
+            closeConfirmModal();
+        });
 
         // ==========================================================================
         // Авторизация: вход, регистрация, восстановление пароля
@@ -658,6 +754,16 @@
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible' && session) fullSync();
         });
+
+        // ==========================================================================
+        // Service Worker: кэширует само приложение (HTML, шрифты, стили, SDK),
+        // чтобы оно открывалось даже без сети, а не только работало с данными офлайн
+        // ==========================================================================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
     </script>
 </body>
 </html>
