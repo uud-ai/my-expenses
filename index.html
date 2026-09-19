@@ -47,6 +47,8 @@
             }
         }
         .hidden { display: none !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-[#f5f5f7] text-[#1d1d1f] min-h-screen flex flex-col justify-between antialiased">
@@ -151,9 +153,17 @@
                 <span id="sync-dot" class="w-2 h-2 rounded-full bg-[#34c759]"></span>
                 <span id="sync-label" class="text-[#86868b] font-medium">Синхронизировано</span>
             </div>
-            <button id="logout-btn" class="text-[#86868b] hover:text-[#ff453a] font-medium transition-colors">
-                <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i>Выйти
-            </button>
+            <div class="flex items-center gap-4">
+                <button id="analytics-btn" class="text-[#86868b] hover:text-[#1d1d1f] transition-colors" title="Аналитика">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </button>
+                <button id="history-btn" class="text-[#86868b] hover:text-[#1d1d1f] transition-colors" title="История">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </button>
+                <button id="logout-btn" class="text-[#86868b] hover:text-[#ff453a] font-medium transition-colors" title="Выйти">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                </button>
+            </div>
         </div>
         <div id="offline-banner" class="hidden w-full max-w-md mx-auto px-6 mt-2">
             <div class="bg-[#fff3cd] text-[#8a6500] text-xs font-medium rounded-xl px-4 py-2 text-center">
@@ -166,8 +176,19 @@
 
             <!-- Верхняя панель: Дата и заголовок -->
             <header class="mb-10">
-                <p id="current-date" class="text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-1">Загрузка даты...</p>
-                <h1 class="text-4xl font-bold tracking-tight mb-6">Сегодня</h1>
+                <div class="flex items-center justify-between mb-1">
+                    <p id="current-date" class="text-xs font-semibold text-[#86868b] uppercase tracking-wider">Загрузка даты...</p>
+                    <div class="flex items-center gap-1">
+                        <button id="prev-day-btn" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]">
+                            <i class="fa-solid fa-chevron-left text-xs"></i>
+                        </button>
+                        <button id="today-btn" class="hidden text-[10px] font-bold text-[#0071e3] px-2 py-1 rounded-full hover:bg-[#0071e3]/10">Сегодня</button>
+                        <button id="next-day-btn" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b] disabled:opacity-30">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <h1 id="day-title" class="text-4xl font-bold tracking-tight mb-6">Сегодня</h1>
 
                 <!-- Карточка Общей Суммы -->
                 <div class="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-black/[0.02] transition-all">
@@ -181,8 +202,20 @@
 
             <!-- Раздел со списком трат -->
             <section>
+                <!-- Фильтр по категориям + поиск -->
+                <div class="flex items-center gap-2 mb-4">
+                    <div id="category-filters" class="flex-1 flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+                    <button id="search-toggle-btn" class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full bg-white border border-black/[0.04] text-[#86868b] hover:text-[#1d1d1f] transition-colors">
+                        <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                    </button>
+                </div>
+                <div id="search-bar" class="hidden mb-4">
+                    <input type="text" id="search-input" placeholder="Поиск по названию..."
+                           class="w-full bg-white border border-black/[0.04] rounded-2xl px-4 py-3 outline-none focus:border-[#0071e3] text-sm font-medium">
+                </div>
+
                 <h2 class="text-lg font-semibold mb-4 text-[#1d1d1f] flex justify-between items-center">
-                    <span>Список расходов</span>
+                    <span id="list-title">Список расходов</span>
                     <span id="items-count" class="text-xs bg-[#e8e8ed] px-2.5 py-1 rounded-full text-[#86868b]">0</span>
                 </h2>
 
@@ -240,6 +273,30 @@
                                class="w-full bg-[#f5f5f7] focus:bg-white border-2 border-transparent focus:border-[#0071e3] rounded-2xl px-4 py-3.5 outline-none transition-all duration-200 text-base font-medium placeholder-[#86868b]">
                     </div>
 
+                    <div>
+                        <label class="block text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-2">Категория</label>
+                        <div id="modal-category-chips" class="flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div id="recurring-field" class="flex items-center justify-between bg-[#f5f5f7] rounded-2xl px-4 py-3.5">
+                        <div>
+                            <p class="text-sm font-semibold">Повторяющийся расход</p>
+                            <p class="text-xs text-[#86868b]">Например, подписка или аренда</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="expense-recurring" class="sr-only peer">
+                            <div class="w-11 h-6 bg-[#e8e8ed] peer-checked:bg-[#0071e3] rounded-full transition-colors"></div>
+                            <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                        </label>
+                    </div>
+                    <div id="recurring-interval-field" class="hidden">
+                        <label class="block text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-2">Периодичность</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" data-interval="weekly" class="interval-btn py-3 rounded-xl font-semibold text-sm border-2 border-transparent bg-[#f5f5f7] transition-all">Каждую неделю</button>
+                            <button type="button" data-interval="monthly" class="interval-btn py-3 rounded-xl font-semibold text-sm border-2 border-transparent bg-[#f5f5f7] transition-all">Каждый месяц</button>
+                        </div>
+                    </div>
+
                     <!-- Кнопки действий -->
                     <div class="grid grid-cols-2 gap-3 pt-4">
                         <button type="button" id="close-modal-btn" class="bg-[#f5f5f7] hover:bg-[#e8e8ed] active:scale-[0.98] text-[#1d1d1f] py-4 rounded-2xl font-semibold text-sm transition-all duration-200">
@@ -270,6 +327,69 @@
                 </div>
             </div>
         </div>
+
+        <!-- Экран истории: по дням/месяцам и повторяющиеся траты -->
+        <div id="history-overlay" class="hidden fixed inset-0 z-40 bg-[#f5f5f7] overflow-y-auto">
+            <div class="w-full max-w-md mx-auto px-6 pt-12 pb-12">
+                <div class="flex items-center gap-3 mb-8">
+                    <button id="history-back-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#1d1d1f]">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h1 class="text-2xl font-bold tracking-tight flex-1">История</h1>
+                    <button id="export-csv-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]" title="Экспорт в CSV">
+                        <i class="fa-solid fa-file-export"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-1 bg-[#f5f5f7] rounded-xl p-1 mb-6 text-sm font-semibold border border-black/[0.02]">
+                    <button type="button" data-history-tab="days" class="history-tab-btn py-2 rounded-lg transition-all">По дням</button>
+                    <button type="button" data-history-tab="subs" class="history-tab-btn py-2 rounded-lg transition-all">Подписки</button>
+                </div>
+
+                <div id="history-days-list" class="space-y-6"></div>
+                <div id="history-subs-list" class="hidden space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- Экран аналитики: разбивка по категориям и дням месяца -->
+        <div id="analytics-overlay" class="hidden fixed inset-0 z-40 bg-[#f5f5f7] overflow-y-auto">
+            <div class="w-full max-w-md mx-auto px-6 pt-12 pb-12">
+                <div class="flex items-center gap-3 mb-8">
+                    <button id="analytics-back-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#1d1d1f]">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h1 class="text-2xl font-bold tracking-tight">Аналитика</h1>
+                </div>
+
+                <div class="flex items-center justify-between mb-6">
+                    <button id="analytics-prev-month-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <p id="analytics-month-label" class="text-base font-semibold capitalize"></p>
+                    <button id="analytics-next-month-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-black/[0.02] mb-6">
+                    <p class="text-xs font-medium text-[#86868b] uppercase tracking-wider mb-1">Всего за месяц</p>
+                    <div class="flex items-baseline gap-1">
+                        <span id="analytics-total" class="text-4xl font-bold tracking-tight">0</span>
+                        <span class="text-2xl font-semibold">₽</span>
+                    </div>
+                </div>
+
+                <div id="analytics-empty" class="hidden text-center py-16 text-[#86868b] text-sm">Нет расходов за этот месяц</div>
+
+                <div id="analytics-content">
+                    <h2 class="text-lg font-semibold mb-4">По категориям</h2>
+                    <div id="analytics-categories" class="space-y-4 mb-8"></div>
+
+                    <h2 class="text-lg font-semibold mb-4">По дням</h2>
+                    <div id="analytics-daily-chart" class="bg-white rounded-3xl p-6 border border-black/[0.02] flex items-end gap-[2px] h-32"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Логика работы приложения (JS) -->
@@ -283,7 +403,76 @@
 
         let session = null;
         let expenses = [];
+        let recurringTemplates = [];
         let realtimeChannel = null;
+
+        // ==========================================================================
+        // Категории расходов
+        // ==========================================================================
+        const CATEGORIES = {
+            food: { label: 'Еда', icon: 'fa-utensils', color: '#ff9f0a' },
+            transport: { label: 'Транспорт', icon: 'fa-car', color: '#0071e3' },
+            entertainment: { label: 'Развлечения', icon: 'fa-film', color: '#af52de' },
+            shopping: { label: 'Покупки', icon: 'fa-bag-shopping', color: '#ff375f' },
+            housing: { label: 'Жильё', icon: 'fa-house', color: '#30b0c7' },
+            health: { label: 'Здоровье', icon: 'fa-heart-pulse', color: '#34c759' },
+            other: { label: 'Другое', icon: 'fa-ellipsis', color: '#86868b' }
+        };
+        const CATEGORY_ORDER = ['food', 'transport', 'entertainment', 'shopping', 'housing', 'health', 'other'];
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ==========================================================================
+        // Даты: работа с локальными днями в формате YYYY-MM-DD
+        // ==========================================================================
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function dateStrOf(iso) {
+            const d = new Date(iso);
+            return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        }
+
+        function todayStr() { return dateStrOf(new Date().toISOString()); }
+
+        function addDaysStr(dateStr, days) {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dt = new Date(y, m - 1, d);
+            dt.setDate(dt.getDate() + days);
+            return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+        }
+
+        function addMonthsStr(dateStr, months) {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dt = new Date(y, m - 1 + months, d);
+            return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+        }
+
+        function nextDueDate(fromDateStr, interval) {
+            return interval === 'weekly' ? addDaysStr(fromDateStr, 7) : addMonthsStr(fromDateStr, 1);
+        }
+
+        // Создаёт метку времени на выбранный день (с текущим временем суток) —
+        // так можно задним числом добавить трату за прошлый день из истории
+        function timestampForSelectedDate() {
+            const now = new Date();
+            const [y, m, d] = selectedDate.split('-').map(Number);
+            return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+        }
+
+        function formatShortDate(iso) {
+            return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        }
+
+        // ==========================================================================
+        // Состояние экрана: выбранный день, поиск, фильтр по категории
+        // ==========================================================================
+        let selectedDate = todayStr();
+        let searchQuery = '';
+        let activeCategory = 'all';
 
         // DOM: экраны
         const viewLoading = document.getElementById('view-loading');
@@ -301,12 +490,20 @@
         // ==========================================================================
         function expensesKey() { return `expenses_${session.user.id}`; }
         function lastSyncKey() { return `last_sync_${session.user.id}`; }
+        function recurringKey() { return `recurring_${session.user.id}`; }
 
         function loadLocal() {
             expenses = JSON.parse(localStorage.getItem(expensesKey())) || [];
         }
         function saveLocal() {
             localStorage.setItem(expensesKey(), JSON.stringify(expenses));
+        }
+
+        function loadRecurringLocal() {
+            recurringTemplates = JSON.parse(localStorage.getItem(recurringKey())) || [];
+        }
+        function saveRecurringLocal() {
+            localStorage.setItem(recurringKey(), JSON.stringify(recurringTemplates));
         }
 
         // ==========================================================================
@@ -375,10 +572,75 @@
             }
         }
 
+        async function pushRecurringChanges() {
+            if (!session || !navigator.onLine) return;
+            const dirty = recurringTemplates.filter(t => t._dirty);
+            if (dirty.length === 0) return;
+            const rows = dirty.map(({ _dirty, ...rest }) => rest);
+            const { error } = await supabaseClient.from('recurring_expenses').upsert(rows);
+            if (!error) {
+                dirty.forEach(t => delete t._dirty);
+                saveRecurringLocal();
+            }
+        }
+
+        async function pullRecurringChanges() {
+            if (!session || !navigator.onLine) return;
+            const { data, error } = await supabaseClient.from('recurring_expenses').select('*').eq('user_id', session.user.id);
+            if (error || !data) return;
+            data.forEach(remote => {
+                const idx = recurringTemplates.findIndex(t => t.id === remote.id);
+                if (idx === -1) recurringTemplates.push(remote);
+                else if (!recurringTemplates[idx]._dirty) recurringTemplates[idx] = remote;
+            });
+            saveRecurringLocal();
+        }
+
+        // Генерирует очередные списания для повторяющихся трат, которые уже подошли по сроку
+        function processRecurring() {
+            const today = todayStr();
+            let changed = false;
+            recurringTemplates.forEach((t) => {
+                if (!t.is_active) return;
+                let guard = 0;
+                while (t.next_due <= today && guard < 24) {
+                    const occurred = expenses.some(e => e.recurring_id === t.id && dateStrOf(e.created_at) === t.next_due);
+                    if (!occurred) {
+                        expenses.unshift({
+                            id: crypto.randomUUID(),
+                            user_id: session.user.id,
+                            name: t.name,
+                            amount: t.amount,
+                            category: t.category,
+                            created_at: new Date(`${t.next_due}T12:00:00`).toISOString(),
+                            updated_at: new Date().toISOString(),
+                            is_deleted: false,
+                            recurring_id: t.id,
+                            _dirty: true
+                        });
+                    }
+                    t.next_due = nextDueDate(t.next_due, t.interval);
+                    t.updated_at = new Date().toISOString();
+                    t._dirty = true;
+                    changed = true;
+                    guard++;
+                }
+            });
+            if (changed) {
+                saveLocal();
+                saveRecurringLocal();
+                pushChanges();
+                pushRecurringChanges();
+            }
+        }
+
         async function fullSync() {
             if (!session || !navigator.onLine) { setSyncStatus(navigator.onLine ? 'pending' : 'offline'); return; }
             await pushChanges();
             await pullChanges();
+            await pushRecurringChanges();
+            await pullRecurringChanges();
+            processRecurring();
             renderUI();
             setSyncStatus(expenses.some(e => e._dirty) ? 'pending' : 'synced');
         }
@@ -411,18 +673,143 @@
         // Управление расходами (работает офлайн, синхронизируется при наличии сети)
         // ==========================================================================
         const currentDateEl = document.getElementById('current-date');
+        const dayTitleEl = document.getElementById('day-title');
+        const todayBtn = document.getElementById('today-btn');
+        const nextDayBtn = document.getElementById('next-day-btn');
         const totalAmountEl = document.getElementById('total-amount');
         const itemsCountEl = document.getElementById('items-count');
         const expenseListEl = document.getElementById('expense-list');
         const emptyStateEl = document.getElementById('empty-state');
+        const searchBar = document.getElementById('search-bar');
+        const searchInput = document.getElementById('search-input');
+        const searchToggleBtn = document.getElementById('search-toggle-btn');
 
-        function setLocalDate() {
-            const options = { weekday: 'long', day: 'numeric', month: 'long' };
-            currentDateEl.textContent = new Date().toLocaleDateString('ru-RU', options);
+        document.getElementById('prev-day-btn').addEventListener('click', goPrevDay);
+        nextDayBtn.addEventListener('click', goNextDay);
+        todayBtn.addEventListener('click', goToday);
+
+        searchToggleBtn.addEventListener('click', () => {
+            searchBar.classList.toggle('hidden');
+            if (!searchBar.classList.contains('hidden')) {
+                searchInput.focus();
+            } else {
+                searchQuery = '';
+                searchInput.value = '';
+                renderUI();
+            }
+        });
+        searchInput.addEventListener('input', () => {
+            searchQuery = searchInput.value;
+            renderUI();
+        });
+
+        function updateDateHeader() {
+            const [y, m, d] = selectedDate.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            currentDateEl.textContent = dateObj.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+
+            const today = todayStr();
+            if (selectedDate === today) {
+                dayTitleEl.textContent = 'Сегодня';
+            } else if (selectedDate === addDaysStr(today, -1)) {
+                dayTitleEl.textContent = 'Вчера';
+            } else {
+                dayTitleEl.textContent = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+            }
+            todayBtn.classList.toggle('hidden', selectedDate === today);
+            nextDayBtn.disabled = selectedDate >= today;
+        }
+
+        function clearSearch() {
+            searchQuery = '';
+            searchInput.value = '';
+            searchBar.classList.add('hidden');
+        }
+
+        function goPrevDay() {
+            selectedDate = addDaysStr(selectedDate, -1);
+            clearSearch();
+            updateDateHeader();
+            renderUI();
+        }
+
+        function goNextDay() {
+            if (selectedDate >= todayStr()) return;
+            selectedDate = addDaysStr(selectedDate, 1);
+            clearSearch();
+            updateDateHeader();
+            renderUI();
+        }
+
+        function goToday() {
+            selectedDate = todayStr();
+            clearSearch();
+            updateDateHeader();
+            renderUI();
+        }
+
+        function goToDate(dateStr) {
+            selectedDate = dateStr;
+            clearSearch();
+            updateDateHeader();
+            renderUI();
+            closeHistory();
+        }
+
+        // ==========================================================================
+        // Фильтр по категориям (чипы над списком)
+        // ==========================================================================
+        function renderCategoryChips() {
+            const chipsEl = document.getElementById('category-filters');
+            const allChip = `<button data-category="all" class="category-chip flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all">Все</button>`;
+            const catChips = CATEGORY_ORDER.map((key) => {
+                const c = CATEGORIES[key];
+                return `<button data-category="${key}" class="category-chip flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all flex items-center gap-1.5"><i class="fa-solid ${c.icon}"></i>${c.label}</button>`;
+            }).join('');
+            chipsEl.innerHTML = allChip + catChips;
+            chipsEl.querySelectorAll('.category-chip').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    activeCategory = btn.dataset.category;
+                    updateCategoryChipStyles();
+                    renderUI();
+                });
+            });
+            updateCategoryChipStyles();
+        }
+
+        function updateCategoryChipStyles() {
+            document.querySelectorAll('.category-chip').forEach((btn) => {
+                const active = btn.dataset.category === activeCategory;
+                btn.classList.toggle('bg-[#1d1d1f]', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('border-[#1d1d1f]', active);
+                btn.classList.toggle('bg-white', !active);
+                btn.classList.toggle('text-[#86868b]', !active);
+                btn.classList.toggle('border-transparent', !active);
+            });
+        }
+
+        // ==========================================================================
+        // Отображаемый список: день, поиск по всем датам и фильтр категории вместе
+        // ==========================================================================
+        function getVisibleExpenses() {
+            let list = expenses.filter(e => !e.is_deleted);
+            const q = searchQuery.trim().toLowerCase();
+            if (q) {
+                list = list.filter(e => e.name.toLowerCase().includes(q));
+            } else {
+                list = list.filter(e => dateStrOf(e.created_at) === selectedDate);
+            }
+            if (activeCategory !== 'all') {
+                list = list.filter(e => (e.category || 'other') === activeCategory);
+            }
+            return list.sort((a, b) => b.created_at.localeCompare(a.created_at));
         }
 
         function renderUI() {
-            const visible = expenses.filter(e => !e.is_deleted).sort((a, b) => b.created_at.localeCompare(a.created_at));
+            const visible = getVisibleExpenses();
+            const isSearching = searchQuery.trim().length > 0;
+            document.getElementById('list-title').textContent = isSearching ? 'Результаты поиска' : 'Список расходов';
             expenseListEl.innerHTML = '';
             let total = 0;
 
@@ -435,20 +822,22 @@
 
                 visible.forEach((item) => {
                     total += parseFloat(item.amount);
+                    const cat = CATEGORIES[item.category] || CATEGORIES.other;
 
                     const expenseCard = document.createElement('div');
                     expenseCard.className = 'expense-card bg-white rounded-2xl p-4 flex justify-between items-center shadow-[0_4px_20px_rgb(0,0,0,0.01)] border border-black/[0.01]';
 
                     expenseCard.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-[#f5f5f7] text-[#1d1d1f] rounded-full flex items-center justify-center text-sm font-semibold">
-                                ${item.name.charAt(0).toUpperCase()}
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm flex-shrink-0" style="background:${cat.color}1a; color:${cat.color}">
+                                <i class="fa-solid ${cat.icon}"></i>
                             </div>
-                            <div>
-                                <p class="font-semibold text-[#1d1d1f] text-base leading-tight">${item.name}</p>
+                            <div class="min-w-0">
+                                <p class="font-semibold text-[#1d1d1f] text-base leading-tight truncate">${escapeHtml(item.name)}${item.recurring_id ? ' <i class="fa-solid fa-arrows-rotate text-[10px] text-[#86868b]"></i>' : ''}</p>
+                                ${isSearching ? `<p class="text-xs text-[#86868b]">${formatShortDate(item.created_at)}</p>` : ''}
                             </div>
                         </div>
-                        <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-3 flex-shrink-0">
                             <span class="font-bold text-base text-[#1d1d1f]">${parseFloat(item.amount).toLocaleString('ru-RU')} ₽</span>
                             <button onclick="openEditModal('${item.id}')" class="text-[#86868b] hover:text-[#0071e3] active:scale-95 transition-all p-1">
                                 <i class="fa-regular fa-pen-to-square text-sm"></i>
@@ -465,35 +854,71 @@
             totalAmountEl.textContent = total.toLocaleString('ru-RU');
         }
 
-        function addExpense(name, amount) {
-            const now = new Date().toISOString();
-            expenses.unshift({
+        function addExpense(name, amount, category, recurringId = null) {
+            const entry = {
                 id: crypto.randomUUID(),
                 user_id: session.user.id,
                 name,
                 amount,
-                created_at: now,
-                updated_at: now,
+                category,
+                created_at: timestampForSelectedDate(),
+                updated_at: new Date().toISOString(),
                 is_deleted: false,
+                recurring_id: recurringId,
                 _dirty: true
-            });
+            };
+            expenses.unshift(entry);
             saveLocal();
             renderUI();
             setSyncStatus('pending');
             pushChanges().then(() => setSyncStatus(expenses.some(e => e._dirty) ? 'pending' : 'synced'));
+            return entry;
         }
 
-        function updateExpense(id, name, amount) {
+        function updateExpense(id, name, amount, category) {
             const item = expenses.find(e => e.id === id);
             if (!item) return;
             item.name = name;
             item.amount = amount;
+            item.category = category;
             item.updated_at = new Date().toISOString();
             item._dirty = true;
             saveLocal();
             renderUI();
             setSyncStatus('pending');
             pushChanges().then(() => setSyncStatus(expenses.some(e => e._dirty) ? 'pending' : 'synced'));
+        }
+
+        function createRecurringExpense(name, amount, category, interval) {
+            const today = todayStr();
+            const template = {
+                id: crypto.randomUUID(),
+                user_id: session.user.id,
+                name,
+                amount,
+                category,
+                interval,
+                next_due: nextDueDate(today, interval),
+                is_active: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                _dirty: true
+            };
+            recurringTemplates.unshift(template);
+            saveRecurringLocal();
+            pushRecurringChanges();
+            addExpense(name, amount, category, template.id);
+        }
+
+        function cancelRecurring(id) {
+            const t = recurringTemplates.find(x => x.id === id);
+            if (!t) return;
+            t.is_active = false;
+            t.updated_at = new Date().toISOString();
+            t._dirty = true;
+            saveRecurringLocal();
+            pushRecurringChanges();
+            renderHistorySubs();
         }
 
         function deleteExpense(id) {
@@ -520,8 +945,64 @@
         const expenseForm = document.getElementById('expense-form');
         const expenseNameInput = document.getElementById('expense-name');
         const expenseAmountInput = document.getElementById('expense-amount');
+        const recurringField = document.getElementById('recurring-field');
+        const recurringIntervalField = document.getElementById('recurring-interval-field');
+        const expenseRecurringCheckbox = document.getElementById('expense-recurring');
 
         let editingId = null;
+        let selectedModalCategory = 'other';
+        let selectedInterval = 'monthly';
+
+        function renderModalCategoryChips() {
+            const el = document.getElementById('modal-category-chips');
+            el.innerHTML = CATEGORY_ORDER.map((key) => {
+                const c = CATEGORIES[key];
+                return `<button type="button" data-category="${key}" class="modal-category-chip px-3 py-2 rounded-xl text-xs font-semibold border-2 border-transparent transition-all flex items-center gap-1.5"><i class="fa-solid ${c.icon}"></i>${c.label}</button>`;
+            }).join('');
+            el.querySelectorAll('.modal-category-chip').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    selectedModalCategory = btn.dataset.category;
+                    updateModalCategoryStyles();
+                });
+            });
+            updateModalCategoryStyles();
+        }
+
+        function updateModalCategoryStyles() {
+            document.querySelectorAll('.modal-category-chip').forEach((btn) => {
+                const active = btn.dataset.category === selectedModalCategory;
+                btn.classList.toggle('bg-[#1d1d1f]', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('border-[#1d1d1f]', active);
+                btn.classList.toggle('bg-[#f5f5f7]', !active);
+                btn.classList.toggle('text-[#1d1d1f]', !active);
+            });
+        }
+
+        function updateIntervalStyles() {
+            document.querySelectorAll('.interval-btn').forEach((btn) => {
+                const active = btn.dataset.interval === selectedInterval;
+                btn.classList.toggle('bg-[#1d1d1f]', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('border-[#1d1d1f]', active);
+                btn.classList.toggle('bg-[#f5f5f7]', !active);
+                btn.classList.toggle('text-[#1d1d1f]', !active);
+            });
+        }
+
+        document.querySelectorAll('.interval-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                selectedInterval = btn.dataset.interval;
+                updateIntervalStyles();
+            });
+        });
+
+        expenseRecurringCheckbox.addEventListener('change', (e) => {
+            recurringIntervalField.classList.toggle('hidden', !e.target.checked);
+        });
+
+        renderModalCategoryChips();
+        updateIntervalStyles();
 
         function showModal() {
             modal.classList.remove('invisible');
@@ -535,6 +1016,12 @@
             editingId = null;
             modalTitle.textContent = 'Новый расход';
             expenseForm.reset();
+            selectedModalCategory = 'other';
+            updateModalCategoryStyles();
+            selectedInterval = 'monthly';
+            updateIntervalStyles();
+            recurringField.classList.remove('hidden');
+            recurringIntervalField.classList.add('hidden');
             showModal();
         }
 
@@ -545,6 +1032,10 @@
             modalTitle.textContent = 'Изменить расход';
             expenseNameInput.value = item.name;
             expenseAmountInput.value = item.amount;
+            selectedModalCategory = item.category || 'other';
+            updateModalCategoryStyles();
+            recurringField.classList.add('hidden');
+            recurringIntervalField.classList.add('hidden');
             showModal();
         }
 
@@ -562,9 +1053,11 @@
             const amount = parseFloat(expenseAmountInput.value);
             if (name && amount > 0) {
                 if (editingId) {
-                    updateExpense(editingId, name, amount);
+                    updateExpense(editingId, name, amount, selectedModalCategory);
+                } else if (expenseRecurringCheckbox.checked) {
+                    createRecurringExpense(name, amount, selectedModalCategory, selectedInterval);
                 } else {
-                    addExpense(name, amount);
+                    addExpense(name, amount, selectedModalCategory);
                 }
                 closeModal();
                 expenseForm.reset();
@@ -611,6 +1104,225 @@
             if (pendingDeleteId) deleteExpense(pendingDeleteId);
             closeConfirmModal();
         });
+
+        // ==========================================================================
+        // История: список по дням/месяцам + управление подписками
+        // ==========================================================================
+        const historyOverlay = document.getElementById('history-overlay');
+
+        function openHistory() {
+            renderHistoryDays();
+            renderHistorySubs();
+            setHistoryTab('days');
+            historyOverlay.classList.remove('hidden');
+        }
+        function closeHistory() { historyOverlay.classList.add('hidden'); }
+
+        function setHistoryTab(tab) {
+            document.querySelectorAll('.history-tab-btn').forEach((btn) => {
+                const active = btn.dataset.historyTab === tab;
+                btn.classList.toggle('bg-white', active);
+                btn.classList.toggle('shadow-sm', active);
+                btn.classList.toggle('text-[#1d1d1f]', active);
+                btn.classList.toggle('text-[#86868b]', !active);
+            });
+            document.getElementById('history-days-list').classList.toggle('hidden', tab !== 'days');
+            document.getElementById('history-subs-list').classList.toggle('hidden', tab !== 'subs');
+        }
+
+        function renderHistoryDays() {
+            const container = document.getElementById('history-days-list');
+            const byDay = {};
+            expenses.filter(e => !e.is_deleted).forEach((e) => {
+                const ds = dateStrOf(e.created_at);
+                byDay[ds] = (byDay[ds] || 0) + parseFloat(e.amount);
+            });
+            const days = Object.keys(byDay).sort((a, b) => b.localeCompare(a));
+            if (days.length === 0) {
+                container.innerHTML = `<p class="text-center text-sm text-[#86868b] py-12">Пока нет расходов</p>`;
+                return;
+            }
+            const byMonth = {};
+            days.forEach((d) => {
+                const monthKey = d.slice(0, 7);
+                (byMonth[monthKey] = byMonth[monthKey] || []).push(d);
+            });
+            container.innerHTML = Object.keys(byMonth).sort((a, b) => b.localeCompare(a)).map((monthKey) => {
+                const [y, m] = monthKey.split('-').map(Number);
+                const monthLabel = new Date(y, m - 1, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+                const rows = byMonth[monthKey].map((d) => {
+                    const label = new Date(`${d}T12:00:00`).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+                    return `
+                        <button onclick="goToDate('${d}')" class="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-3 border border-black/[0.01] hover:border-[#0071e3]/30 transition-all">
+                            <span class="text-sm font-medium capitalize">${label}</span>
+                            <span class="text-sm font-bold">${byDay[d].toLocaleString('ru-RU')} ₽</span>
+                        </button>
+                    `;
+                }).join('');
+                return `
+                    <div>
+                        <h3 class="text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-2 capitalize">${monthLabel}</h3>
+                        <div class="space-y-2">${rows}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderHistorySubs() {
+            const container = document.getElementById('history-subs-list');
+            const active = recurringTemplates.filter(t => t.is_active);
+            if (active.length === 0) {
+                container.innerHTML = `<p class="text-center text-sm text-[#86868b] py-12">Нет повторяющихся трат</p>`;
+                return;
+            }
+            container.innerHTML = active.map((t) => {
+                const cat = CATEGORIES[t.category] || CATEGORIES.other;
+                const intervalLabel = t.interval === 'weekly' ? 'Каждую неделю' : 'Каждый месяц';
+                const nextDue = new Date(`${t.next_due}T12:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+                return `
+                    <div class="bg-white rounded-2xl p-4 flex items-center justify-between border border-black/[0.01]">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm flex-shrink-0" style="background:${cat.color}1a; color:${cat.color}">
+                                <i class="fa-solid ${cat.icon}"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-semibold text-base truncate">${escapeHtml(t.name)}</p>
+                                <p class="text-xs text-[#86868b]">${intervalLabel} · след. ${nextDue}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <span class="font-bold text-base">${parseFloat(t.amount).toLocaleString('ru-RU')} ₽</span>
+                            <button onclick="cancelRecurring('${t.id}')" class="text-[#86868b] hover:text-[#ff453a] p-1">
+                                <i class="fa-regular fa-trash-can text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('history-btn').addEventListener('click', openHistory);
+        document.getElementById('history-back-btn').addEventListener('click', closeHistory);
+        document.querySelectorAll('.history-tab-btn').forEach((btn) => {
+            btn.addEventListener('click', () => setHistoryTab(btn.dataset.historyTab));
+        });
+
+        // ==========================================================================
+        // Экспорт в CSV
+        // ==========================================================================
+        function csvEscape(value) {
+            const str = String(value);
+            return /[;"\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+        }
+
+        function exportCSV() {
+            const rows = [['Дата', 'Название', 'Категория', 'Сумма']];
+            expenses.filter(e => !e.is_deleted).sort((a, b) => a.created_at.localeCompare(b.created_at)).forEach((e) => {
+                const cat = CATEGORIES[e.category] || CATEGORIES.other;
+                rows.push([dateStrOf(e.created_at), e.name, cat.label, e.amount]);
+            });
+            const csv = rows.map(row => row.map(csvEscape).join(';')).join('\r\n');
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `expenses_${todayStr()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
+
+        // ==========================================================================
+        // Аналитика: разбивка по категориям и дням выбранного месяца
+        // ==========================================================================
+        const analyticsOverlay = document.getElementById('analytics-overlay');
+        let analyticsMonth = null;
+
+        function openAnalytics() {
+            const today = new Date();
+            analyticsMonth = { year: today.getFullYear(), month: today.getMonth() + 1 };
+            renderAnalytics();
+            analyticsOverlay.classList.remove('hidden');
+        }
+        function closeAnalytics() { analyticsOverlay.classList.add('hidden'); }
+
+        function shiftAnalyticsMonth(delta) {
+            let { year, month } = analyticsMonth;
+            month += delta;
+            if (month < 1) { month = 12; year -= 1; }
+            if (month > 12) { month = 1; year += 1; }
+            analyticsMonth = { year, month };
+            renderAnalytics();
+        }
+
+        function renderAnalytics() {
+            const { year, month } = analyticsMonth;
+            const label = new Date(year, month - 1, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+            document.getElementById('analytics-month-label').textContent = label;
+
+            const prefix = `${year}-${pad2(month)}`;
+            const monthExpenses = expenses.filter(e => !e.is_deleted && dateStrOf(e.created_at).startsWith(prefix));
+            const total = monthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+            document.getElementById('analytics-total').textContent = total.toLocaleString('ru-RU');
+
+            const emptyEl = document.getElementById('analytics-empty');
+            const contentEl = document.getElementById('analytics-content');
+
+            if (monthExpenses.length === 0) {
+                emptyEl.classList.remove('hidden');
+                contentEl.classList.add('hidden');
+                return;
+            }
+            emptyEl.classList.add('hidden');
+            contentEl.classList.remove('hidden');
+
+            const byCategory = {};
+            monthExpenses.forEach((e) => {
+                const key = e.category || 'other';
+                byCategory[key] = (byCategory[key] || 0) + parseFloat(e.amount);
+            });
+            const sortedCats = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+            document.getElementById('analytics-categories').innerHTML = sortedCats.map(([key, amount]) => {
+                const cat = CATEGORIES[key] || CATEGORIES.other;
+                const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
+                return `
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 text-sm">
+                            <span class="font-medium flex items-center gap-2"><i class="fa-solid ${cat.icon} text-xs" style="color:${cat.color}"></i>${cat.label}</span>
+                            <span class="font-semibold">${amount.toLocaleString('ru-RU')} ₽ · ${pct}%</span>
+                        </div>
+                        <div class="w-full h-2 bg-[#e8e8ed] rounded-full overflow-hidden">
+                            <div class="h-full rounded-full" style="width:${pct}%; background:${cat.color}"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const dailyTotals = new Array(daysInMonth + 1).fill(0);
+            monthExpenses.forEach((e) => {
+                const day = Number(dateStrOf(e.created_at).slice(8, 10));
+                dailyTotals[day] += parseFloat(e.amount);
+            });
+            const maxDay = Math.max(...dailyTotals);
+            const todayDs = todayStr();
+            document.getElementById('analytics-daily-chart').innerHTML = dailyTotals.slice(1).map((amt, idx) => {
+                const day = idx + 1;
+                const h = maxDay > 0 ? Math.max(2, Math.round((amt / maxDay) * 100)) : 2;
+                const isToday = `${year}-${pad2(month)}-${pad2(day)}` === todayDs;
+                return `<div class="flex-1 h-full flex items-end" title="${day}: ${amt.toLocaleString('ru-RU')} ₽">
+                    <div class="w-full rounded-t ${isToday ? 'bg-[#0071e3]' : 'bg-[#e8e8ed]'}" style="height:${h}%"></div>
+                </div>`;
+            }).join('');
+        }
+
+        document.getElementById('analytics-btn').addEventListener('click', openAnalytics);
+        document.getElementById('analytics-back-btn').addEventListener('click', closeAnalytics);
+        document.getElementById('analytics-prev-month-btn').addEventListener('click', () => shiftAnalyticsMonth(-1));
+        document.getElementById('analytics-next-month-btn').addEventListener('click', () => shiftAnalyticsMonth(1));
 
         // ==========================================================================
         // Авторизация: вход, регистрация, восстановление пароля
@@ -712,8 +1424,15 @@
         function enterApp(newSession) {
             session = newSession;
             loadLocal();
+            loadRecurringLocal();
+            selectedDate = todayStr();
+            searchQuery = '';
+            activeCategory = 'all';
+            clearSearch();
+            renderCategoryChips();
+            updateDateHeader();
+            processRecurring();
             renderUI();
-            setLocalDate();
             showOnly(viewApp);
             updateOfflineBanner();
             fullSync();
@@ -724,6 +1443,9 @@
             unsubscribeRealtime();
             session = null;
             expenses = [];
+            recurringTemplates = [];
+            closeHistory();
+            closeAnalytics();
             setAuthTab('login');
             showOnly(viewAuth);
         }
