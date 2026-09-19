@@ -2,12 +2,12 @@
 // чтобы само приложение открывалось даже без сети. Данные при этом всегда
 // обрабатываются через Supabase/localStorage в index.html, это не касается этого файла.
 
-const CACHE_NAME = 'my-expenses-shell-v1';
+const CACHE_NAME = 'my-expenses-shell-v2';
 
 const APP_SHELL = [
     './',
     './index.html',
-    'https://cdn.tailwindcss.com',
+    './styles.css',
     'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
