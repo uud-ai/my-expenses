@@ -478,7 +478,7 @@
         // upsert по первичному ключу схлопнет их в одну запись вместо дубликата.
         function recurringOccurrenceId(recurringId, dateStr) {
             const hex = hashHex32(`${recurringId}:${dateStr}:a`) + hashHex32(`${recurringId}:${dateStr}:b`);
-            return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+            return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(12, 15)}-8${hex.slice(15, 18)}-${hex.slice(18, 30)}`;
         }
 
         // Создаёт метку времени на выбранный день (с текущим временем суток) —
@@ -1363,9 +1363,12 @@
         // валидную сессию, поэтому если её открыли и бросили на середине (закрыли вкладку,
         // не задав новый пароль), при следующем открытии сайта нельзя молча пускать
         // в приложение по этой сессии — иначе ссылка восстановления работает как вечный логин.
-        function markRecoveryPending() { localStorage.setItem('pending_recovery', 'true'); }
+        // Привязываем флаг к access_token конкретной recovery-сессии, а не держим его
+        // глобальным булевым — иначе брошенная ссылка восстановления ломает следующий
+        // обычный (и никак не связанный) логин на этом же браузере.
+        function markRecoveryPending(session) { localStorage.setItem('pending_recovery', session.access_token); }
         function clearRecoveryPending() { localStorage.removeItem('pending_recovery'); }
-        function isRecoveryPending() { return localStorage.getItem('pending_recovery') === 'true'; }
+        function isRecoveryPending(session) { return !!session && localStorage.getItem('pending_recovery') === session.access_token; }
 
         function authRedirectUrl() {
             return window.location.href.split('#')[0].split('?')[0];
@@ -1508,7 +1511,7 @@
         supabaseClient.auth.onAuthStateChange((event, newSession) => {
             if (event === 'PASSWORD_RECOVERY') {
                 session = newSession;
-                markRecoveryPending();
+                markRecoveryPending(newSession);
                 showOnly(viewRecovery);
                 return;
             }
@@ -1516,8 +1519,14 @@
                 leaveApp();
                 return;
             }
+            if (event === 'USER_UPDATED') {
+                // updateUser({password}) из recovery-формы сам эмитит это событие
+                // раньше, чем резолвится его промис — обработку успеха (очистку
+                // pending-флага и вход) делает сам submit-хендлер, здесь просто игнорируем.
+                return;
+            }
             if (newSession) {
-                if (isRecoveryPending()) {
+                if (isRecoveryPending(newSession)) {
                     // Сессия осталась от ссылки восстановления, которую открыли, но не
                     // довели до конца в прошлый раз — не пускаем в приложение молча.
                     clearRecoveryPending();
