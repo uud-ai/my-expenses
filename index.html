@@ -3,7 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="color-scheme" content="light dark">
     <title>Финансы — Сегодня</title>
+
+    <!-- Ставим тему синхронно, до отрисовки страницы — иначе на системной тёмной теме будет видна вспышка светлого фона -->
+    <script>
+        (function () {
+            var t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
 
     <!-- Настройки для запуска как полноценное мобильное приложение (без рамок браузера) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,6 +58,43 @@
         .hidden { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ============================================================
+           Тёмная тема: переопределяем конкретные Tailwind-классы по их
+           точному значению (атрибутный селектор ~= — точное совпадение
+           токена в списке классов), не трогая разметку. Жёстко заданный
+           акцентный синий (#0071e3) и красный/зелёный статусы оставлены
+           как есть — на тёмном фоне читаются нормально без отдельной
+           палитры.
+           ============================================================ */
+        html[data-theme="dark"] { color-scheme: dark; }
+
+        html[data-theme="dark"] [class~="bg-[#f5f5f7]"] { background-color: #000000 !important; }
+        html[data-theme="dark"] [class~="bg-white"] { background-color: #1c1c1e !important; }
+        html[data-theme="dark"] [class~="text-[#1d1d1f]"] { color: #f5f5f7 !important; }
+        html[data-theme="dark"] [class~="bg-[#1d1d1f]"] { background-color: #2c2c2e !important; }
+        html[data-theme="dark"] [class~="border-[#1d1d1f]"] { border-color: #2c2c2e !important; }
+        html[data-theme="dark"] [class~="border-t-[#1d1d1f]"] { border-top-color: #f5f5f7 !important; }
+        html[data-theme="dark"] [class~="text-[#86868b]"] { color: #98989d !important; }
+        html[data-theme="dark"] [class~="placeholder-[#86868b]"]::placeholder { color: #98989d !important; }
+        html[data-theme="dark"] [class~="bg-[#e8e8ed]"] { background-color: #2c2c2e !important; }
+        html[data-theme="dark"] [class~="border-[#e8e8ed]"] { border-color: #38383a !important; }
+        html[data-theme="dark"] [class~="border-black/[0.01]"] { border-color: rgba(255, 255, 255, 0.08) !important; }
+        html[data-theme="dark"] [class~="border-black/[0.02]"] { border-color: rgba(255, 255, 255, 0.08) !important; }
+        html[data-theme="dark"] [class~="border-black/[0.04]"] { border-color: rgba(255, 255, 255, 0.1) !important; }
+        html[data-theme="dark"] [class~="bg-[#e8f8ee]"] { background-color: rgba(48, 209, 88, 0.15) !important; }
+        html[data-theme="dark"] [class~="text-[#1e7e34]"] { color: #30d158 !important; }
+        html[data-theme="dark"] [class~="bg-[#fdecea]"] { background-color: rgba(255, 69, 58, 0.15) !important; }
+        html[data-theme="dark"] [class~="text-[#c62828]"] { color: #ff6961 !important; }
+        html[data-theme="dark"] [class~="bg-[#fff3cd]"] { background-color: rgba(255, 159, 10, 0.15) !important; }
+        html[data-theme="dark"] [class~="text-[#8a6500]"] { color: #ffd60a !important; }
+        html[data-theme="dark"] [class~="hover:bg-[#e8e8ed]"]:hover { background-color: #2c2c2e !important; }
+        html[data-theme="dark"] [class~="hover:bg-[#313135]"]:hover { background-color: #3a3a3c !important; }
+        html[data-theme="dark"] [class~="hover:text-[#1d1d1f]"]:hover { color: #f5f5f7 !important; }
+        html[data-theme="dark"] [class~="focus:bg-white"]:focus { background-color: #1c1c1e !important; }
+        html[data-theme="dark"] [class~="from-[#f5f5f7]"][class~="via-[#f5f5f7]"] {
+            background-image: linear-gradient(to top, #000000, #000000, transparent) !important;
+        }
     </style>
 </head>
 <body class="bg-[#f5f5f7] text-[#1d1d1f] min-h-screen flex flex-col justify-between antialiased">
@@ -157,13 +203,19 @@
                 <span id="sync-label" class="text-[#86868b] font-medium">Синхронизировано</span>
             </div>
             <div class="flex items-center gap-4">
-                <button id="analytics-btn" class="text-[#86868b] hover:text-[#1d1d1f] transition-colors" title="Аналитика">
+                <button id="theme-toggle-btn" class="text-[#86868b] hover:text-[#1d1d1f] transition-colors" title="Тема" aria-label="Переключить тему">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button id="categories-btn" class="text-[#86868b] hover:text-[#1d1d1f] transition-colors" title="Категории" aria-label="Категории">
+                    <i class="fa-solid fa-tags"></i>
+                </button>
+                <button id="analytics-btn" class="text-[#86868b] hover:text-[#1d1d1f] transition-colors" title="Аналитика" aria-label="Аналитика">
                     <i class="fa-solid fa-chart-pie"></i>
                 </button>
-                <button id="history-btn" class="text-[#86868b] hover:text-[#1d1d1f] transition-colors" title="История">
+                <button id="history-btn" class="text-[#86868b] hover:text-[#1d1d1f] transition-colors" title="История" aria-label="История">
                     <i class="fa-solid fa-calendar-days"></i>
                 </button>
-                <button id="logout-btn" class="text-[#86868b] hover:text-[#ff453a] font-medium transition-colors" title="Выйти">
+                <button id="logout-btn" class="text-[#86868b] hover:text-[#ff453a] font-medium transition-colors" title="Выйти" aria-label="Выйти">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
                 </button>
             </div>
@@ -182,11 +234,11 @@
                 <div class="flex items-center justify-between mb-1">
                     <p id="current-date" class="text-xs font-semibold text-[#86868b] uppercase tracking-wider">Загрузка даты...</p>
                     <div class="flex items-center gap-1">
-                        <button id="prev-day-btn" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]">
+                        <button id="prev-day-btn" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]" aria-label="Предыдущий день">
                             <i class="fa-solid fa-chevron-left text-xs"></i>
                         </button>
                         <button id="today-btn" class="hidden text-[10px] font-bold text-[#0071e3] px-2 py-1 rounded-full hover:bg-[#0071e3]/10">Сегодня</button>
-                        <button id="next-day-btn" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b] disabled:opacity-30">
+                        <button id="next-day-btn" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b] disabled:opacity-30" aria-label="Следующий день">
                             <i class="fa-solid fa-chevron-right text-xs"></i>
                         </button>
                     </div>
@@ -208,7 +260,7 @@
                 <!-- Фильтр по категориям + поиск -->
                 <div class="flex items-center gap-2 mb-4">
                     <div id="category-filters" class="flex-1 flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
-                    <button id="search-toggle-btn" class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full bg-white border border-black/[0.04] text-[#86868b] hover:text-[#1d1d1f] transition-colors">
+                    <button id="search-toggle-btn" class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full bg-white border border-black/[0.04] text-[#86868b] hover:text-[#1d1d1f] transition-colors" aria-label="Поиск">
                         <i class="fa-solid fa-magnifying-glass text-sm"></i>
                     </button>
                 </div>
@@ -335,11 +387,11 @@
         <div id="history-overlay" class="hidden fixed inset-0 z-40 bg-[#f5f5f7] overflow-y-auto">
             <div class="w-full max-w-md mx-auto px-6 pt-12 pb-12">
                 <div class="flex items-center gap-3 mb-8">
-                    <button id="history-back-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#1d1d1f]">
+                    <button id="history-back-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#1d1d1f]" aria-label="Назад">
                         <i class="fa-solid fa-arrow-left"></i>
                     </button>
                     <h1 class="text-2xl font-bold tracking-tight flex-1">История</h1>
-                    <button id="export-csv-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]" title="Экспорт в CSV">
+                    <button id="export-csv-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]" title="Экспорт в CSV" aria-label="Экспорт в CSV">
                         <i class="fa-solid fa-file-export"></i>
                     </button>
                 </div>
@@ -355,21 +407,43 @@
         </div>
 
         <!-- Экран аналитики: разбивка по категориям и дням месяца -->
+        <!-- Экран управления категориями: добавление/удаление -->
+        <div id="categories-overlay" class="hidden fixed inset-0 z-40 bg-[#f5f5f7] overflow-y-auto">
+            <div class="w-full max-w-md mx-auto px-6 pt-12 pb-12">
+                <div class="flex items-center gap-3 mb-8">
+                    <button id="categories-back-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#1d1d1f]" aria-label="Назад">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h1 class="text-2xl font-bold tracking-tight flex-1">Категории</h1>
+                </div>
+
+                <p id="categories-message" class="hidden text-sm rounded-xl px-4 py-3 mb-4 bg-[#fdecea] text-[#c62828]"></p>
+
+                <div id="categories-list" class="space-y-2 mb-6"></div>
+
+                <form id="add-category-form" class="flex items-center gap-2">
+                    <input type="text" id="add-category-input" placeholder="Новая категория" required maxlength="30" autocomplete="off"
+                           class="flex-1 bg-white border-2 border-transparent focus:border-[#0071e3] rounded-2xl px-4 py-3 outline-none text-sm font-medium">
+                    <button type="submit" class="bg-[#1d1d1f] text-white px-4 py-3 rounded-2xl font-semibold text-sm">Добавить</button>
+                </form>
+            </div>
+        </div>
+
         <div id="analytics-overlay" class="hidden fixed inset-0 z-40 bg-[#f5f5f7] overflow-y-auto">
             <div class="w-full max-w-md mx-auto px-6 pt-12 pb-12">
                 <div class="flex items-center gap-3 mb-8">
-                    <button id="analytics-back-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#1d1d1f]">
+                    <button id="analytics-back-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#1d1d1f]" aria-label="Назад">
                         <i class="fa-solid fa-arrow-left"></i>
                     </button>
                     <h1 class="text-2xl font-bold tracking-tight">Аналитика</h1>
                 </div>
 
                 <div class="flex items-center justify-between mb-6">
-                    <button id="analytics-prev-month-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]">
+                    <button id="analytics-prev-month-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]" aria-label="Предыдущий месяц">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
                     <p id="analytics-month-label" class="text-base font-semibold capitalize"></p>
-                    <button id="analytics-next-month-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]">
+                    <button id="analytics-next-month-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#e8e8ed] text-[#86868b]" aria-label="Следующий месяц">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>
@@ -380,6 +454,24 @@
                         <span id="analytics-total" class="text-4xl font-bold tracking-tight">0</span>
                         <span class="text-2xl font-semibold">₽</span>
                     </div>
+
+                    <div id="analytics-budget-display" class="hidden mt-4">
+                        <div class="flex items-center justify-between mb-1.5 text-xs">
+                            <span id="analytics-budget-text" class="font-medium text-[#86868b]"></span>
+                            <button type="button" id="analytics-budget-edit-btn" class="font-semibold text-[#0071e3]">Изменить</button>
+                        </div>
+                        <div class="w-full h-1.5 bg-[#e8e8ed] rounded-full overflow-hidden">
+                            <div id="analytics-budget-bar" class="h-full rounded-full transition-all"></div>
+                        </div>
+                    </div>
+
+                    <form id="analytics-budget-form" class="hidden mt-4 flex items-center gap-2">
+                        <input type="number" id="analytics-budget-input" min="0" step="any" placeholder="Бюджет на месяц, ₽"
+                               class="flex-1 bg-[#f5f5f7] border-2 border-transparent focus:border-[#0071e3] rounded-xl px-3 py-2.5 outline-none text-sm font-medium">
+                        <button type="submit" class="text-xs font-semibold text-white bg-[#1d1d1f] px-4 py-2.5 rounded-xl">OK</button>
+                    </form>
+
+                    <button type="button" id="analytics-budget-set-btn" class="hidden mt-4 text-xs font-semibold text-[#0071e3]">+ Установить месячный бюджет</button>
                 </div>
 
                 <div id="analytics-empty" class="hidden text-center py-16 text-[#86868b] text-sm">Нет расходов за этот месяц</div>
@@ -412,16 +504,121 @@
         // ==========================================================================
         // Категории расходов
         // ==========================================================================
-        const CATEGORIES = {
-            food: { label: 'Еда', icon: 'fa-utensils', color: '#ff9f0a' },
-            transport: { label: 'Транспорт', icon: 'fa-car', color: '#0071e3' },
-            entertainment: { label: 'Развлечения', icon: 'fa-film', color: '#af52de' },
-            shopping: { label: 'Покупки', icon: 'fa-bag-shopping', color: '#ff375f' },
-            housing: { label: 'Жильё', icon: 'fa-house', color: '#30b0c7' },
-            health: { label: 'Здоровье', icon: 'fa-heart-pulse', color: '#34c759' },
-            other: { label: 'Другое', icon: 'fa-ellipsis', color: '#86868b' }
-        };
-        const CATEGORY_ORDER = ['food', 'transport', 'entertainment', 'shopping', 'housing', 'health', 'other'];
+        const DEFAULT_CATEGORIES = [
+            { key: 'food', label: 'Еда', icon: 'fa-utensils', color: '#ff9f0a' },
+            { key: 'transport', label: 'Транспорт', icon: 'fa-car', color: '#0071e3' },
+            { key: 'entertainment', label: 'Развлечения', icon: 'fa-film', color: '#af52de' },
+            { key: 'shopping', label: 'Покупки', icon: 'fa-bag-shopping', color: '#ff375f' },
+            { key: 'housing', label: 'Жильё', icon: 'fa-house', color: '#30b0c7' },
+            { key: 'health', label: 'Здоровье', icon: 'fa-heart-pulse', color: '#34c759' },
+            { key: 'other', label: 'Другое', icon: 'fa-ellipsis', color: '#86868b' }
+        ];
+        // Иконка/цвет для новых пользовательских категорий подбираются по кругу —
+        // без отдельного UI для их выбора
+        const CUSTOM_ICON_POOL = ['fa-tag', 'fa-gift', 'fa-briefcase', 'fa-plane', 'fa-dumbbell', 'fa-graduation-cap', 'fa-paw', 'fa-mug-hot', 'fa-gamepad', 'fa-wallet'];
+        const CUSTOM_COLOR_POOL = ['#5e5ce6', '#ff2d55', '#64d2ff', '#ffd60a', '#bf5af2', '#32d74b', '#ff9500', '#a2845e'];
+
+        let CATEGORIES = {};
+        let CATEGORY_ORDER = [];
+
+        function categoryListToMaps(list) {
+            CATEGORIES = {};
+            CATEGORY_ORDER = [];
+            list.forEach((c) => { CATEGORIES[c.key] = c; CATEGORY_ORDER.push(c.key); });
+            if (!CATEGORIES.other) {
+                const fallback = DEFAULT_CATEGORIES.find(c => c.key === 'other');
+                CATEGORIES.other = fallback;
+                CATEGORY_ORDER.push('other');
+            }
+        }
+        categoryListToMaps(DEFAULT_CATEGORIES);
+
+        // Категории хранятся в user_metadata (Supabase auth), как и бюджет —
+        // без отдельной таблицы/миграции, синхронизируются через сессию
+        function loadCategories() {
+            const stored = session?.user?.user_metadata?.categories;
+            categoryListToMaps(Array.isArray(stored) && stored.length ? stored : DEFAULT_CATEGORIES);
+        }
+
+        async function saveCategories() {
+            const list = CATEGORY_ORDER.map(key => CATEGORIES[key]);
+            const { data, error } = await supabaseClient.auth.updateUser({ data: { categories: list } });
+            if (!error && data.user) session.user = data.user;
+            return !error;
+        }
+
+        function showCategoriesMessage(text) {
+            const el = document.getElementById('categories-message');
+            el.textContent = text;
+            el.classList.remove('hidden');
+        }
+        function hideCategoriesMessage() {
+            document.getElementById('categories-message').classList.add('hidden');
+        }
+
+        async function addCategory(label) {
+            const prevCategories = CATEGORIES;
+            const prevOrder = CATEGORY_ORDER;
+            const customCount = CATEGORY_ORDER.filter(k => k.startsWith('custom_')).length;
+            const key = `custom_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+            const icon = CUSTOM_ICON_POOL[customCount % CUSTOM_ICON_POOL.length];
+            const color = CUSTOM_COLOR_POOL[customCount % CUSTOM_COLOR_POOL.length];
+            CATEGORIES = { ...prevCategories, [key]: { key, label, icon, color } };
+            CATEGORY_ORDER = prevOrder.filter(k => k !== 'other').concat(key, 'other');
+            const ok = await saveCategories();
+            if (ok) {
+                hideCategoriesMessage();
+            } else {
+                CATEGORIES = prevCategories;
+                CATEGORY_ORDER = prevOrder;
+                showCategoriesMessage('Не удалось сохранить — проверьте соединение и попробуйте ещё раз.');
+            }
+            renderCategoriesList();
+            renderCategoryChips();
+            renderModalCategoryChips();
+        }
+
+        async function removeCategory(key) {
+            if (key === 'other' || !CATEGORIES[key]) return;
+            const prevCategories = CATEGORIES;
+            const prevOrder = CATEGORY_ORDER;
+            CATEGORIES = { ...prevCategories };
+            delete CATEGORIES[key];
+            CATEGORY_ORDER = prevOrder.filter(k => k !== key);
+            if (activeCategory === key) activeCategory = 'all';
+            if (selectedModalCategory === key) selectedModalCategory = 'other';
+            const ok = await saveCategories();
+            if (ok) {
+                hideCategoriesMessage();
+            } else {
+                CATEGORIES = prevCategories;
+                CATEGORY_ORDER = prevOrder;
+                showCategoriesMessage('Не удалось сохранить — проверьте соединение и попробуйте ещё раз.');
+            }
+            renderCategoriesList();
+            renderCategoryChips();
+            renderModalCategoryChips();
+            renderUI();
+        }
+
+        // ==========================================================================
+        // Тема: светлая/тёмная (ручной переключатель, хранится в localStorage;
+        // стартовое значение уже выставлено инлайн-скриптом в <head>, чтобы не мигать)
+        // ==========================================================================
+        function currentTheme() {
+            return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+        }
+        function syncThemeIcon() {
+            const icon = document.querySelector('#theme-toggle-btn i');
+            icon.className = currentTheme() === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        }
+        document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+            const next = currentTheme() === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            syncThemeIcon();
+        });
+        syncThemeIcon();
 
         function escapeHtml(str) {
             const div = document.createElement('div');
@@ -448,14 +645,20 @@
             return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
         }
 
-        function addMonthsStr(dateStr, months) {
+        // anchorDay (если передан) берётся вместо дня из dateStr — иначе после одного
+        // клампа (31 янв -> 28 фев) день подписки навсегда "залипал" бы на 28-м,
+        // даже в месяцах, где 31-е снова существует (28 фев -> 28 мар вместо 31 мар)
+        function addMonthsStr(dateStr, months, anchorDay) {
             const [y, m, d] = dateStr.split('-').map(Number);
-            const dt = new Date(y, m - 1 + months, d);
+            const day = anchorDay || d;
+            const dt = new Date(y, m - 1 + months, 1);
+            const daysInTarget = new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate();
+            dt.setDate(Math.min(day, daysInTarget));
             return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
         }
 
-        function nextDueDate(fromDateStr, interval) {
-            return interval === 'weekly' ? addDaysStr(fromDateStr, 7) : addMonthsStr(fromDateStr, 1);
+        function nextDueDate(fromDateStr, interval, anchorDay) {
+            return interval === 'weekly' ? addDaysStr(fromDateStr, 7) : addMonthsStr(fromDateStr, 1, anchorDay);
         }
 
         // Небольшой некриптографический хэш (cyrb53-подобный) — нужен только для того,
@@ -499,6 +702,7 @@
         let selectedDate = todayStr();
         let searchQuery = '';
         let activeCategory = 'all';
+        let searchResultsLimit = 50;
 
         // DOM: экраны
         const viewLoading = document.getElementById('view-loading');
@@ -628,8 +832,9 @@
             let changed = false;
             recurringTemplates.forEach((t) => {
                 if (!t.is_active) return;
+                const anchorDay = Number(dateStrOf(t.created_at).slice(8, 10));
                 let guard = 0;
-                while (t.next_due <= today && guard < 24) {
+                while (t.next_due <= today && guard < 10000) {
                     const occId = recurringOccurrenceId(t.id, t.next_due);
                     const occurred = expenses.some(e => e.id === occId || (e.recurring_id === t.id && dateStrOf(e.created_at) === t.next_due));
                     if (!occurred) {
@@ -646,7 +851,7 @@
                             _dirty: true
                         });
                     }
-                    t.next_due = nextDueDate(t.next_due, t.interval);
+                    t.next_due = nextDueDate(t.next_due, t.interval, anchorDay);
                     t.updated_at = new Date().toISOString();
                     t._dirty = true;
                     changed = true;
@@ -661,18 +866,25 @@
             }
         }
 
+        let syncInFlight = false;
         async function fullSync() {
             if (!session || !navigator.onLine) { setSyncStatus(navigator.onLine ? 'pending' : 'offline'); return; }
-            // Сначала повторяющиеся шаблоны, потом расходы: у expenses.recurring_id есть
-            // внешний ключ на recurring_expenses, иначе апсерт расхода может упасть с FK-ошибкой,
-            // если шаблон ещё не долетел до сервера.
-            await pushRecurringChanges();
-            await pullRecurringChanges();
-            await pushChanges();
-            await pullChanges();
-            processRecurring();
-            renderUI();
-            setSyncStatus(expenses.some(e => e._dirty) ? 'pending' : 'synced');
+            if (syncInFlight) return;
+            syncInFlight = true;
+            try {
+                // Сначала повторяющиеся шаблоны, потом расходы: у expenses.recurring_id есть
+                // внешний ключ на recurring_expenses, иначе апсерт расхода может упасть с FK-ошибкой,
+                // если шаблон ещё не долетел до сервера.
+                await pushRecurringChanges();
+                await pullRecurringChanges();
+                await pushChanges();
+                await pullChanges();
+                processRecurring();
+                renderUI();
+                setSyncStatus(expenses.some(e => e._dirty) ? 'pending' : 'synced');
+            } finally {
+                syncInFlight = false;
+            }
         }
 
         function subscribeRealtime() {
@@ -730,6 +942,7 @@
         });
         searchInput.addEventListener('input', () => {
             searchQuery = searchInput.value;
+            searchResultsLimit = 50;
             renderUI();
         });
 
@@ -753,6 +966,7 @@
         function clearSearch() {
             searchQuery = '';
             searchInput.value = '';
+            searchResultsLimit = 50;
             searchBar.classList.add('hidden');
         }
 
@@ -841,7 +1055,7 @@
             const isSearching = searchQuery.trim().length > 0;
             document.getElementById('list-title').textContent = isSearching ? 'Результаты поиска' : 'Список расходов';
             expenseListEl.innerHTML = '';
-            let total = 0;
+            const total = visible.reduce((sum, item) => sum + parseFloat(item.amount), 0);
 
             if (visible.length === 0) {
                 emptyStateEl.classList.remove('hidden');
@@ -850,8 +1064,10 @@
                 emptyStateEl.classList.add('hidden');
                 itemsCountEl.textContent = visible.length;
 
-                visible.forEach((item) => {
-                    total += parseFloat(item.amount);
+                // При поиске по всей истории список может быть большим — рендерим порциями,
+                // чтобы не вставлять в DOM тысячи карточек за раз.
+                const shown = isSearching ? visible.slice(0, searchResultsLimit) : visible;
+                shown.forEach((item) => {
                     const cat = CATEGORIES[item.category] || CATEGORIES.other;
 
                     const expenseCard = document.createElement('div');
@@ -869,16 +1085,28 @@
                         </div>
                         <div class="flex items-center gap-3 flex-shrink-0">
                             <span class="font-bold text-base text-[#1d1d1f]">${parseFloat(item.amount).toLocaleString('ru-RU')} ₽</span>
-                            <button onclick="openEditModal('${item.id}')" class="text-[#86868b] hover:text-[#0071e3] active:scale-95 transition-all p-1">
+                            <button onclick="openEditModal('${item.id}')" class="text-[#86868b] hover:text-[#0071e3] active:scale-95 transition-all p-1" aria-label="Изменить">
                                 <i class="fa-regular fa-pen-to-square text-sm"></i>
                             </button>
-                            <button onclick="confirmDelete('${item.id}')" class="text-[#86868b] hover:text-[#ff453a] active:scale-95 transition-all p-1">
+                            <button onclick="confirmDelete('${item.id}')" class="text-[#86868b] hover:text-[#ff453a] active:scale-95 transition-all p-1" aria-label="Удалить">
                                 <i class="fa-regular fa-trash-can text-sm"></i>
                             </button>
                         </div>
                     `;
                     expenseListEl.appendChild(expenseCard);
                 });
+
+                if (isSearching && visible.length > shown.length) {
+                    const moreBtn = document.createElement('button');
+                    moreBtn.type = 'button';
+                    moreBtn.className = 'w-full text-sm font-semibold text-[#0071e3] py-3 text-center';
+                    moreBtn.textContent = `Показать ещё (${visible.length - shown.length})`;
+                    moreBtn.addEventListener('click', () => {
+                        searchResultsLimit += 50;
+                        renderUI();
+                    });
+                    expenseListEl.appendChild(moreBtn);
+                }
             }
 
             totalAmountEl.textContent = total.toLocaleString('ru-RU');
@@ -1138,6 +1366,51 @@
         });
 
         // ==========================================================================
+        // Категории: добавление/удаление (список хранится в user_metadata)
+        // ==========================================================================
+        const categoriesOverlay = document.getElementById('categories-overlay');
+
+        function openCategories() {
+            hideCategoriesMessage();
+            renderCategoriesList();
+            categoriesOverlay.classList.remove('hidden');
+        }
+        function closeCategories() { categoriesOverlay.classList.add('hidden'); }
+
+        function renderCategoriesList() {
+            const container = document.getElementById('categories-list');
+            container.innerHTML = CATEGORY_ORDER.map((key) => {
+                const c = CATEGORIES[key];
+                const deletable = key !== 'other';
+                return `
+                    <div class="bg-white rounded-2xl p-4 flex items-center justify-between border border-black/[0.01]">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm flex-shrink-0" style="background:${c.color}1a; color:${c.color}">
+                                <i class="fa-solid ${c.icon}"></i>
+                            </div>
+                            <span class="font-medium truncate">${escapeHtml(c.label)}</span>
+                        </div>
+                        ${deletable ? `<button onclick="removeCategory('${key}')" class="text-[#86868b] hover:text-[#ff453a] p-1" aria-label="Удалить категорию"><i class="fa-regular fa-trash-can text-sm"></i></button>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('categories-btn').addEventListener('click', openCategories);
+        document.getElementById('categories-back-btn').addEventListener('click', closeCategories);
+        document.getElementById('add-category-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const input = document.getElementById('add-category-input');
+            const label = input.value.trim();
+            if (!label) return;
+            await withSubmitLock(form, async () => {
+                await addCategory(label);
+                input.value = '';
+            });
+        });
+
+        // ==========================================================================
         // История: список по дням/месяцам + управление подписками
         // ==========================================================================
         const historyOverlay = document.getElementById('history-overlay');
@@ -1224,7 +1497,7 @@
                         </div>
                         <div class="flex items-center gap-3 flex-shrink-0">
                             <span class="font-bold text-base">${parseFloat(t.amount).toLocaleString('ru-RU')} ₽</span>
-                            <button onclick="cancelRecurring('${t.id}')" class="text-[#86868b] hover:text-[#ff453a] p-1">
+                            <button onclick="cancelRecurring('${t.id}')" class="text-[#86868b] hover:text-[#ff453a] p-1" aria-label="Отменить подписку">
                                 <i class="fa-regular fa-trash-can text-sm"></i>
                             </button>
                         </div>
@@ -1290,6 +1563,61 @@
             renderAnalytics();
         }
 
+        // Месячный бюджет хранится в user_metadata (Supabase auth) — не нужна отдельная
+        // таблица/миграция, и значение само синхронизируется между устройствами через сессию.
+        function getMonthlyBudget() {
+            return Number(session?.user?.user_metadata?.monthly_budget) || 0;
+        }
+
+        async function setMonthlyBudget(value) {
+            const { data, error } = await supabaseClient.auth.updateUser({ data: { monthly_budget: value } });
+            if (!error && data.user) session.user = data.user;
+            return !error;
+        }
+
+        function renderBudget(total) {
+            const budget = getMonthlyBudget();
+            const displayEl = document.getElementById('analytics-budget-display');
+            const setBtnEl = document.getElementById('analytics-budget-set-btn');
+            const formEl = document.getElementById('analytics-budget-form');
+            formEl.classList.add('hidden');
+
+            if (budget > 0) {
+                displayEl.classList.remove('hidden');
+                setBtnEl.classList.add('hidden');
+                const pct = Math.min(100, Math.round((total / budget) * 100));
+                const over = total > budget;
+                document.getElementById('analytics-budget-text').textContent = over
+                    ? `Превышение на ${(total - budget).toLocaleString('ru-RU')} ₽`
+                    : `Бюджет ${budget.toLocaleString('ru-RU')} ₽ · осталось ${(budget - total).toLocaleString('ru-RU')} ₽`;
+                const barEl = document.getElementById('analytics-budget-bar');
+                barEl.style.width = `${pct}%`;
+                barEl.style.background = over ? '#ff453a' : '#0071e3';
+            } else {
+                displayEl.classList.add('hidden');
+                setBtnEl.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('analytics-budget-set-btn').addEventListener('click', () => {
+            document.getElementById('analytics-budget-set-btn').classList.add('hidden');
+            document.getElementById('analytics-budget-form').classList.remove('hidden');
+            document.getElementById('analytics-budget-input').value = '';
+            document.getElementById('analytics-budget-input').focus();
+        });
+        document.getElementById('analytics-budget-edit-btn').addEventListener('click', () => {
+            document.getElementById('analytics-budget-display').classList.add('hidden');
+            document.getElementById('analytics-budget-form').classList.remove('hidden');
+            document.getElementById('analytics-budget-input').value = getMonthlyBudget() || '';
+            document.getElementById('analytics-budget-input').focus();
+        });
+        document.getElementById('analytics-budget-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const value = Math.max(0, parseFloat(document.getElementById('analytics-budget-input').value) || 0);
+            await setMonthlyBudget(value);
+            renderAnalytics();
+        });
+
         function renderAnalytics() {
             const { year, month } = analyticsMonth;
             const label = new Date(year, month - 1, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
@@ -1299,6 +1627,7 @@
             const monthExpenses = expenses.filter(e => !e.is_deleted && dateStrOf(e.created_at).startsWith(prefix));
             const total = monthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
             document.getElementById('analytics-total').textContent = total.toLocaleString('ru-RU');
+            renderBudget(total);
 
             const emptyEl = document.getElementById('analytics-empty');
             const contentEl = document.getElementById('analytics-content');
@@ -1401,42 +1730,63 @@
         document.getElementById('forgot-password-link').addEventListener('click', () => setAuthTab('forgot'));
         document.getElementById('back-to-login-link').addEventListener('click', () => setAuthTab('login'));
 
+        // Блокируем кнопку на время запроса — иначе медленная сеть позволяет
+        // наотправлять несколько signIn/signUp/reset кликов подряд.
+        async function withSubmitLock(form, fn) {
+            const btn = form.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            try {
+                await fn();
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('login-email').value.trim();
-            const password = document.getElementById('login-password').value;
-            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) {
-                document.getElementById('auth-message').classList.remove('hidden');
-                showAuthMessage(error.message, true);
-            }
+            const form = e.target;
+            await withSubmitLock(form, async () => {
+                const email = document.getElementById('login-email').value.trim();
+                const password = document.getElementById('login-password').value;
+                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) {
+                    document.getElementById('auth-message').classList.remove('hidden');
+                    showAuthMessage(error.message, true);
+                }
+            });
         });
 
         document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('register-email').value.trim();
-            const password = document.getElementById('register-password').value;
-            const { data, error } = await supabaseClient.auth.signUp({ email, password });
-            document.getElementById('auth-message').classList.remove('hidden');
-            if (error) {
-                showAuthMessage(error.message, true);
-            } else if (data.session) {
-                showAuthMessage('Аккаунт создан!', false);
-            } else {
-                showAuthMessage('Проверьте почту — мы отправили письмо для подтверждения аккаунта.', false);
-            }
+            const form = e.target;
+            await withSubmitLock(form, async () => {
+                const email = document.getElementById('register-email').value.trim();
+                const password = document.getElementById('register-password').value;
+                const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                document.getElementById('auth-message').classList.remove('hidden');
+                if (error) {
+                    showAuthMessage(error.message, true);
+                } else if (data.session) {
+                    showAuthMessage('Аккаунт создан!', false);
+                } else {
+                    showAuthMessage('Проверьте почту — мы отправили письмо для подтверждения аккаунта.', false);
+                }
+            });
         });
 
         document.getElementById('forgot-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('forgot-email').value.trim();
-            const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: authRedirectUrl() });
-            document.getElementById('auth-message').classList.remove('hidden');
-            if (error) {
-                showAuthMessage(error.message, true);
-            } else {
-                showAuthMessage('Письмо со ссылкой для сброса пароля отправлено.', false);
-            }
+            const form = e.target;
+            await withSubmitLock(form, async () => {
+                const email = document.getElementById('forgot-email').value.trim();
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: authRedirectUrl() });
+                document.getElementById('auth-message').classList.remove('hidden');
+                if (error) {
+                    showAuthMessage(error.message, true);
+                } else {
+                    showAuthMessage('Письмо со ссылкой для сброса пароля отправлено.', false);
+                }
+            });
         });
 
         document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -1447,19 +1797,22 @@
         // Экран установки нового пароля после перехода по ссылке восстановления
         document.getElementById('recovery-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const password = document.getElementById('recovery-password').value;
-            const { error } = await supabaseClient.auth.updateUser({ password });
-            const el = document.getElementById('recovery-message');
-            el.classList.remove('hidden');
-            if (error) {
-                el.className = 'text-sm rounded-xl px-4 py-3 mb-4 bg-[#fdecea] text-[#c62828]';
-                el.textContent = error.message;
-            } else {
-                el.className = 'text-sm rounded-xl px-4 py-3 mb-4 bg-[#e8f8ee] text-[#1e7e34]';
-                el.textContent = 'Пароль обновлён!';
-                clearRecoveryPending();
-                setTimeout(() => enterApp(session), 1000);
-            }
+            const form = e.target;
+            await withSubmitLock(form, async () => {
+                const password = document.getElementById('recovery-password').value;
+                const { error } = await supabaseClient.auth.updateUser({ password });
+                const el = document.getElementById('recovery-message');
+                el.classList.remove('hidden');
+                if (error) {
+                    el.className = 'text-sm rounded-xl px-4 py-3 mb-4 bg-[#fdecea] text-[#c62828]';
+                    el.textContent = error.message;
+                } else {
+                    el.className = 'text-sm rounded-xl px-4 py-3 mb-4 bg-[#e8f8ee] text-[#1e7e34]';
+                    el.textContent = 'Пароль обновлён!';
+                    clearRecoveryPending();
+                    setTimeout(() => enterApp(session), 1000);
+                }
+            });
         });
 
         // Если передумали сбрасывать пароль — выходим из временной сессии восстановления,
@@ -1476,11 +1829,13 @@
             session = newSession;
             loadLocal();
             loadRecurringLocal();
+            loadCategories();
             selectedDate = todayStr();
             searchQuery = '';
             activeCategory = 'all';
             clearSearch();
             renderCategoryChips();
+            renderModalCategoryChips();
             updateDateHeader();
             processRecurring();
             renderUI();
@@ -1502,6 +1857,7 @@
             session = null;
             expenses = [];
             recurringTemplates = [];
+            categoryListToMaps(DEFAULT_CATEGORIES);
             closeHistory();
             closeAnalytics();
             setAuthTab('login');
