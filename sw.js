@@ -2,7 +2,7 @@
 // чтобы само приложение открывалось даже без сети. Данные при этом всегда
 // обрабатываются через Supabase/localStorage в index.html, это не касается этого файла.
 
-const CACHE_NAME = 'my-expenses-shell-v3';
+const CACHE_NAME = 'my-expenses-shell-v4';
 
 const APP_SHELL = [
     './',
